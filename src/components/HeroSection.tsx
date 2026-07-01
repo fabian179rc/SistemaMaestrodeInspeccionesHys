@@ -66,7 +66,7 @@ export function HeroSection() {
           className="mb-10 max-w-3xl mx-auto">
           
           <img
-            src="/mockup-final.webp"
+            src="/mockup.webp"
             alt="La Agenda del Nivel Inicial"
             width={800}
             height={800}

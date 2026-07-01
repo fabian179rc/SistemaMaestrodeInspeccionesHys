@@ -5,35 +5,35 @@ const bonuses = [
   num: 1,
   title: 'El Rescate de Actividades para Todo el Año',
   desc: 'Banco de actividades listas para resolver cualquier clase en minutos.',
-  image: "/bonus_1_El_Rescate_de_Actividades_para_Todo_el_Ano.webp"
+  image: "/b1.webp"
 
 },
 {
   num: 2,
   title: 'Efemérides Resueltas sin Estrés',
   desc: 'Propuestas concretas para cada fecha especial del calendario escolar.',
-  image: "/Bonus_2_Efemerides_Resueltas_sin_Estres.webp"
+  image: "/b2.webp"
 
 },
 {
   num: 3,
   title: 'Informes y Registros que Sí Dan Ganas de Usar',
   desc: 'Modelos listos para documentar sin perder horas redactando.',
-  image: "/Bonus_3_Informes_y_Registros_que_Si_Dan_Ganas_de_Usar.webp"
+  image: "/b3.webp"
 
 },
 {
   num: 4,
   title: 'La Agenda Invisible de la Docente Organizada',
   desc: 'Planillas y checklists para bajar la carga mental y ordenar la semana.',
-  image: "/Bonus_4_La_Agenda_Invisible_de_la_Docente_Organizada.webp"
+  image: "/b4.webp"
 
 },
 {
   num: 5,
   title: 'Imprimibles que Te Salvan la Semana',
   desc: 'Recursos visuales listos para imprimir y usar de inmediato en sala.',
-  image: "/Bonus_5_Imprimibles_que_Te_Salvan_la_Semana.webp"
+  image: "/b5.webp"
 
 }];
 

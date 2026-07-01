@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/react-refresh"; // o el plugin que tengas configurado
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],

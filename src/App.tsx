@@ -7,7 +7,7 @@ const PAGE_TITLE =
 'La Agenda del Nivel Inicial — Sistema Completo para la Docente de Nivel Inicial';
 const PAGE_DESC =
 'Planificaciones, actividades, efemérides, informes y recursos listos para usar desde el primer día. Todo lo que necesitás para planificar, organizar y resolver tu trabajo docente de nivel inicial.';
-const HERO_IMAGE = "/mockup-final.webp";
+const HERO_IMAGE = "/mockup.webp";
 
 const SITE_URL = 'https://nivel-inicial.impultienda.ar';
 function setMeta(attr: 'name' | 'property', key: string, content: string) {
