@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema Maestro de Inspecciones HyS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Suprimir advertencia de desarrollo
+      const originalConsoleError = console.error;
+      console.error = function (...args) {
+        if (
+          args[0] &&
+          args[0].includes &&
+          args[0].includes("cdn.tailwindcss.com")
+        ) {
+          return; // Ignorar la advertencia de Tailwind
+        }
+        originalConsoleError.apply(console, args);
+      };
+    </script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.production.min.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <style>
+      .checklist-item-yes {
+        @apply bg-green-100 border-green-300;
+      }
+      .checklist-item-no {
+        @apply bg-red-100 border-red-300;
+      }
+      .checklist-item-pending {
+        @apply bg-yellow-100 border-yellow-300;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      const ChecklistApp = () => {
+        const [activeTab, setActiveTab] = useState("client-info");
+        const [selectedChecklist, setSelectedChecklist] = useState("prep");
+        const [clientData, setClientData] = useState({
+          company: "",
+          cuit: "",
+          address: "",
+          phone: "",
+          email: "",
+          sector: "",
+          workers: "",
+          visitDate: new Date().toISOString().split("T")[0],
+          inspector: "",
+        });
+
+        const [checklistItems, setChecklistItems] = useState({});
+        const [observations, setObservations] = useState("");
+
+        const checklists = {
+          prep: {
+            name: "Preparación de la Inspección",
+            items: [
+              "Objetivo de la inspección definido",
+              "Historial de inspecciones previas revisado",
+              "Estado de acciones anteriores verificado",
+              "Sectores / áreas a recorrer identificados",
+              "Personal a entrevistar definido",
+              "Tiempo estimado de la visita establecido",
+              "Visita informada a la empresa",
+              "Programa Anual de HyS disponible",
+              "Plan de Emergencias y Evacuación disponible",
+              "Mediciones / Protocolos / Informes disponibles",
+              "Registros de Capacitación disponibles",
+              "Entregas de EPP disponibles",
+              "Permisos de Trabajo disponibles",
+              "Procedimientos / Instructivos disponibles",
+              "EPP del inspector completo (casco, calzado, anteojos, guantes, protección auditiva, chaleco reflectivo)",
+              "Equipos e instrumentos de relevamiento listos (cámara, linterna, cinta métrica, termómetro/higrómetro)",
+              "Instrumentos específicos si aplica (luxómetro, sonómetro, detector de gases, multímetro)",
+              "Normativa aplicable identificada (Ley 19.587, Decreto 351/79, Resoluciones SRT, normas IRAM/ISO)",
+              "Procedimientos internos del cliente considerados",
+              "Orden y limpieza como punto a verificar",
+              "Señalización como punto a verificar",
+              "Condiciones edilicias como punto a verificar",
+              "Instalaciones eléctricas como punto a verificar",
+              "Protecciones de máquinas / equipos como punto a verificar",
+              "Sustancias químicas como punto a verificar",
+              "Prevención de incendios como punto a verificar",
+              "Ergonomía como punto a verificar",
+              "Uso de EPP como punto a verificar",
+              "Antecedentes e incidentes previos relevados",
+              "Cambios recientes en procesos o instalaciones relevados",
+              "Presencia de contratistas trabajando verificada",
+              "Trabajos especiales programados verificados",
+              "Necesidad de permiso especial para ingresar verificada",
+            ],
+          },
+          legajo: {
+            name: "Índice del Legajo Técnico",
+            items: [
+              "Datos Generales: datos básicos de la empresa y del servicio de HyS",
+              "Designación del Servicio: designación y aceptación del Responsable de HyS",
+              "Política de HyS: política de Higiene y Seguridad de la empresa",
+              "Organigrama y Responsabilidades: organigrama y funciones en materia de HyS",
+              "Evaluación de Riesgos: evaluación de riesgos por puesto / sector",
+              "Programa Anual de HyS vigente",
+              "Planificación de Inspecciones: programa y registros de inspecciones",
+              "Capacitaciones: plan anual, registros, evaluaciones y constancias",
+              "Entrega de EPP: registros de entrega a trabajadores",
+              "Exámenes Médicos: aptos médicos y control de vigilancia de la salud",
+              "Simulacros y Emergencias: plan de emergencias y registros de simulacros",
+              "Mediciones Higiénicas: protocolos y resultados (ruido, luz, iluminación, etc.)",
+              "Mantenimiento de Instalaciones: registros de mantenimiento preventivo y correctivo",
+              "Permisos de Trabajo: permisos y procedimientos (altura, caliente, etc.)",
+              "Gestión de Contratistas: evaluaciones, inducciones y documentación",
+              "Investigación de Incidentes: registros de incidentes, AT y acciones",
+              "Señalización: plano de señalización y registro de instalaciones",
+              "Planos y Croquis: planos generales, evacuación y sectoriales",
+              "Normativa Aplicable: matriz de requisitos legales aplicables",
+              "Otros Documentos relevantes del sistema",
+            ],
+          },
+          cierre: {
+            name: "Cierre de Visita",
+            items: [
+              "Se recorrieron todas las áreas / sectores programados",
+              "Se tomaron fotografías de los hallazgos y condiciones relevantes",
+              "Se completó la planilla / registro de inspección con toda la información",
+              "Se clasificaron los hallazgos según el nivel de riesgo / criticidad",
+              "Se comunicaron los hallazgos al responsable del área",
+              "Se entregaron recomendaciones y/o medidas correctivas sugeridas",
+              "Se acordaron responsables y plazos para las acciones correctivas",
+              "Se entregó o dejó constancia de la visita (Acta / Minuta / Registro firmado)",
+              "Se verificó el estado de la documentación del legajo técnico",
+              "Se revisaron vencimientos y próximos requisitos críticos",
+              "Se informó la fecha estimada de la próxima visita",
+              "Se agradeció la colaboración y se cerró la visita de manera cordial y profesional",
+              "Planilla de inspección generada o actualizada",
+              "Acta de visita generada o actualizada",
+              "Registro fotográfico generado o actualizado",
+              "Notificación de hallazgos generada o actualizada",
+              "Recomendaciones / Acciones correctivas generadas o actualizadas",
+              "Documentos entregados al cliente / responsable",
+            ],
+          },
+          auditoria: {
+            name: "Auditoría del Legajo Técnico (30 Ítems)",
+            items: [
+              "Ficha de datos de la empresa completa y actualizada",
+              "Designación del Responsable de Higiene y Seguridad",
+              "Política de Higiene y Seguridad firmada",
+              "Organigrama con funciones y responsabilidades",
+              "Seguro de ART vigente",
+              "Evaluación de riesgos por puesto/sector actualizada",
+              "Matriz de riesgos completa y vigente",
+              "Priorización de riesgos documentada",
+              "Plan de acción derivado de la evaluación",
+              "Revisión periódica de la evaluación registrada",
+              "Programa Anual de HyS vigente",
+              "Programa de Prevención de Accidentes",
+              "Programa de Capacitación Anual",
+              "Programa de Inspecciones y Auditorías",
+              "Programa de Mantenimiento Preventivo",
+              "Registro de capacitaciones por tema y fecha",
+              "Lista de asistencia firmada",
+              "Contenidos y material utilizado",
+              "Evaluaciones o verificación de comprensión",
+              "Constancias de capacitación emitidas",
+              "Procedimiento de selección y entrega de EPP",
+              "Registros de entrega de EPP firmados",
+              "Inspección y control de estado de EPP",
+              "Reposición y recambio documentados",
+              "Capacitación sobre uso de EPP registrada",
+              "Exámenes médicos ocupacionales al día",
+              "Aptos médicos archivados",
+              "Programa de Vigilancia de la Salud",
+              "Estadísticas / informes de ausentismo (si aplica)",
+              "Control de condiciones higiénicas del ambiente",
+            ],
+          },
+          artsrt: {
+            name: "¿Estoy Listo para una Inspección de ART/SRT?",
+            items: [
+              "Política de HyS firmada y comunicada",
+              "Responsable de HyS designado",
+              "Organigrama con funciones de HyS",
+              "Matriz de requisitos legales actualizada",
+              "Programa Anual de HyS vigente",
+              "Evaluación de riesgos por puesto actualizada",
+              "Identificación de peligros por sector/área",
+              "Plan de acción de riesgos implementado",
+              "Revisión periódica de la evaluación",
+              "Registros de seguimiento y controles",
+              "Registro de capacitaciones firmado",
+              "Inducción de HyS a todo el personal",
+              "Capacitaciones específicas por puesto",
+              "Evaluaciones de comprensión realizadas",
+              "Programa de capacitaciones vigente",
+              "Provisión de EPP según evaluación de riesgos",
+              "Registro de entrega de EPP firmado",
+              "Estado y mantenimiento de EPP verificado",
+              "Capacitación sobre uso de EPP realizada",
+              "Señalización de uso de EPP visible",
+              "Plan de inspecciones preventivas vigente",
+              "Registros de inspecciones realizadas",
+              "Listas de verificación archivadas",
+              "Acciones correctivas documentadas",
+              "Seguimiento de acciones correctivas",
+              "Plan de emergencias vigente",
+              "Simulacros realizados y registrados",
+              "Botiquines completos y señalizados",
+              "Extintores vigentes y señalizados",
+              "Salidas de emergencia libres y señalizadas",
+              "Registro de accidentes e incidentes",
+              "Estadísticas de siniestralidad actualizadas",
+              "Informe mensual de HyS elaborado",
+              "Comunicaciones y campañas realizadas",
+              "Auditorías internas documentadas",
+            ],
+          },
+        };
+
+        useEffect(() => {
+          const saved = localStorage.getItem("sistemaMaestroChecklistData");
+          if (saved) {
+            const data = JSON.parse(saved);
+            setClientData(data.clientData);
+            setChecklistItems(data.checklistItems);
+            setObservations(data.observations);
+            setSelectedChecklist(data.selectedChecklist || "prep");
+          }
+        }, []);
+
+        useEffect(() => {
+          localStorage.setItem(
+            "sistemaMaestroChecklistData",
+            JSON.stringify({
+              clientData,
+              checklistItems,
+              observations,
+              selectedChecklist,
+            }),
+          );
+        }, [clientData, checklistItems, observations, selectedChecklist]);
+
+        const handleClientDataChange = (field, value) => {
+          setClientData((prev) => ({ ...prev, [field]: value }));
+        };
+
+        const handleChecklistItemChange = (index, value) => {
+          const currentList = checklistItems[selectedChecklist] || {};
+          setChecklistItems((prev) => ({
+            ...prev,
+            [selectedChecklist]: { ...currentList, [index]: value },
+          }));
+        };
+
+        const generatePDF = () => {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF("l", "mm", "a4"); // landscape
+
+          let yPosition = 15;
+
+          // Título
+          doc.setFontSize(18);
+          doc.setTextColor(30, 64, 175); // Azul
+          doc.text("SISTEMA MAESTRO DE INSPECCIONES HyS", 148, yPosition, {
+            align: "center",
+          });
+          yPosition += 8;
+
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text("Reporte de Inspección", 148, yPosition, {
+            align: "center",
+          });
+          yPosition += 12;
+
+          // Línea separadora
+          doc.setDrawColor(30, 64, 175);
+          doc.setLineWidth(0.5);
+          doc.line(10, yPosition - 2, 286, yPosition - 2);
+          yPosition += 5;
+
+          // Datos del cliente
+          doc.setFontSize(10);
+          doc.setTextColor(30, 64, 175);
+          doc.text("DATOS DEL CLIENTE", 10, yPosition);
+          yPosition += 6;
+
+          doc.setFontSize(9);
+          doc.setTextColor(0, 0, 0);
+          doc.text(
+            `Empresa: ${clientData.company || "N/A"} | CUIT: ${clientData.cuit || "N/A"} | Fecha: ${clientData.visitDate || "N/A"} | Inspector: ${clientData.inspector || "N/A"}`,
+            10,
+            yPosition,
+          );
+          yPosition += 5;
+          doc.text(
+            `Domicilio: ${clientData.address || "N/A"} | Teléfono: ${clientData.phone || "N/A"} | Email: ${clientData.email || "N/A"} | Sector: ${clientData.sector || "N/A"}`,
+            10,
+            yPosition,
+          );
+          yPosition += 8;
+
+          // Nombre del checklist
+          doc.setFontSize(10);
+          doc.setTextColor(30, 64, 175);
+          doc.text(
+            `CHECKLIST: ${checklists[selectedChecklist].name}`,
+            10,
+            yPosition,
+          );
+          yPosition += 8;
+
+          // Preparar datos para la tabla
+          const tableData = checklists[selectedChecklist].items.map(
+            (item, index) => {
+              const status =
+                checklistItems[selectedChecklist]?.[index] || "pending";
+              let statusText = "N/A";
+
+              if (status === "yes") {
+                statusText = "SÍ";
+              } else if (status === "no") {
+                statusText = "NO";
+              }
+
+              return [(index + 1).toString(), item, statusText];
+            },
+          );
+
+          // Generar tabla
+          doc.autoTable({
+            head: [["N°", "ITEM DE INSPECCIÓN", "ESTADO"]],
+            body: tableData,
+            startY: yPosition,
+            margin: { left: 10, right: 10 },
+            columnStyles: {
+              0: { cellWidth: 15, halign: "center", fontStyle: "bold" },
+              1: { cellWidth: 240, halign: "left" },
+              2: {
+                cellWidth: 25,
+                halign: "center",
+                fontStyle: "bold",
+                fontSize: 11,
+              },
+            },
+            headStyles: {
+              fillColor: [30, 64, 175],
+              textColor: [255, 255, 255],
+              fontStyle: "bold",
+              fontSize: 10,
+              halign: "center",
+              cellPadding: 5,
+            },
+            bodyStyles: {
+              fontSize: 9,
+              cellPadding: 4,
+              lineColor: [51, 51, 51],
+              fillColor: [255, 255, 255],
+            },
+            didParseCell: (data) => {
+              // Colorear solo el texto de la columna ESTADO (index 2)
+              if (data.section === "body" && data.column.index === 2) {
+                const statusText = data.cell.raw;
+
+                if (statusText === "SÍ") {
+                  data.cell.styles.textColor = [76, 175, 80]; // Verde
+                } else if (statusText === "NO") {
+                  data.cell.styles.textColor = [244, 67, 54]; // Rojo
+                } else if (statusText === "N/A") {
+                  data.cell.styles.textColor = [255, 152, 0]; // Naranja
+                }
+                data.cell.styles.fontStyle = "bold";
+                data.cell.styles.fontSize = 10;
+              }
+            },
+            pageBreak: "auto",
+          });
+
+          // Si hay observaciones, agregarlas en una nueva página si es necesario
+          if (observations) {
+            let finalY = doc.lastAutoTable.finalY + 10;
+
+            if (finalY > 240) {
+              doc.addPage();
+              finalY = 15;
+            }
+
+            doc.setFontSize(11);
+            doc.setTextColor(220, 38, 38); // Rojo
+            doc.setFont(undefined, "bold");
+            doc.text("OBSERVACIONES", 10, finalY);
+            doc.setFont(undefined, "normal");
+            finalY += 8;
+
+            doc.setFontSize(9);
+            doc.setTextColor(0, 0, 0);
+            const obsLines = doc.splitTextToSize(observations, 276);
+            doc.text(obsLines, 10, finalY);
+          }
+
+          // Pie de página en cada página con leyenda mejorada
+          const pageCount = doc.internal.pages.length - 1;
+          for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const bottomY = pageHeight - 10;
+
+            // Leyenda mejorada
+            doc.text("Leyenda de Estados:", 10, bottomY);
+            doc.text(
+              "SÍ = Cumple | NO = No Cumple | N/A = No Aplica",
+              10,
+              bottomY + 4,
+            );
+            doc.text(
+              `Reporte generado el ${new Date().toLocaleDateString("es-AR")} a las ${new Date().toLocaleTimeString("es-AR")}`,
+              148,
+              bottomY + 4,
+              { align: "center" },
+            );
+          }
+
+          doc.save(
+            `checklist-sistema-maestro-${clientData.company || "reporte"}-${clientData.visitDate}.pdf`,
+          );
+        };
+
+        const currentItems = checklists[selectedChecklist].items;
+        const currentChecks = checklistItems[selectedChecklist] || {};
+
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div className="mb-4">
+                  <h1 className="text-3xl font-bold text-indigo-600">
+                    SISTEMA MAESTRO DE INSPECCIONES
+                  </h1>
+                  <p className="text-gray-600">
+                    Higiene y Seguridad - Aplicación de Checklists
+                  </p>
+                </div>
+
+                <div className="flex gap-2 border-b border-gray-200 mb-6">
+                  <button
+                    onClick={() => setActiveTab("client-info")}
+                    className={`px-4 py-2 font-medium border-b-2 transition ${
+                      activeTab === "client-info"
+                        ? "border-indigo-600 text-indigo-600"
+                        : "border-transparent text-gray-600 hover:text-gray-800"
+                    }`}
+                  >
+                    Datos del Cliente
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("checklist")}
+                    className={`px-4 py-2 font-medium border-b-2 transition ${
+                      activeTab === "checklist"
+                        ? "border-indigo-600 text-indigo-600"
+                        : "border-transparent text-gray-600 hover:text-gray-800"
+                    }`}
+                  >
+                    Checklist
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                {activeTab === "client-info" && (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">
+                      Información del Cliente
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {[
+                        { key: "company", label: "Empresa" },
+                        { key: "cuit", label: "CUIT" },
+                        { key: "address", label: "Domicilio" },
+                        { key: "phone", label: "Teléfono" },
+                        { key: "email", label: "Email" },
+                        { key: "sector", label: "Sector/Área" },
+                        { key: "workers", label: "Cantidad de trabajadores" },
+                        {
+                          key: "visitDate",
+                          label: "Fecha de visita",
+                          type: "date",
+                        },
+                        {
+                          key: "inspector",
+                          label: "Inspector/Profesional",
+                          md: "md:col-span-2",
+                        },
+                      ].map((field) => (
+                        <div key={field.key} className={field.md || ""}>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {field.label}
+                          </label>
+                          <input
+                            type={field.type || "text"}
+                            value={clientData[field.key]}
+                            onChange={(e) =>
+                              handleClientDataChange(field.key, e.target.value)
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "checklist" && (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <p className="text-sm text-blue-800 font-medium">
+                        💡 Selecciona un checklist, completa los items y
+                        descarga el PDF al final.
+                      </p>
+                    </div>
+
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Seleccionar Checklist
+                      </label>
+                      <select
+                        value={selectedChecklist}
+                        onChange={(e) => setSelectedChecklist(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      >
+                        {Object.entries(checklists).map(([key, value]) => (
+                          <option key={key} value={key}>
+                            {value.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">
+                      {checklists[selectedChecklist].name}
+                    </h2>
+
+                    <div className="space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded p-4">
+                      {currentItems.map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start gap-3 p-2 hover:bg-gray-50 rounded"
+                        >
+                          <div className="flex gap-1 flex-shrink-0">
+                            <button
+                              onClick={() =>
+                                handleChecklistItemChange(index, "yes")
+                              }
+                              className={`px-2 py-1 rounded text-sm font-medium transition ${
+                                currentChecks[index] === "yes"
+                                  ? "bg-green-500 text-white"
+                                  : "bg-gray-200 text-gray-700 hover:bg-green-200"
+                              }`}
+                            >
+                              ✅
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleChecklistItemChange(index, "no")
+                              }
+                              className={`px-2 py-1 rounded text-sm font-medium transition ${
+                                currentChecks[index] === "no"
+                                  ? "bg-red-500 text-white"
+                                  : "bg-gray-200 text-gray-700 hover:bg-red-200"
+                              }`}
+                            >
+                              ❌
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleChecklistItemChange(index, "pending")
+                              }
+                              className={`px-2 py-1 rounded text-sm font-medium transition ${
+                                currentChecks[index] === "pending" ||
+                                !currentChecks[index]
+                                  ? "bg-yellow-500 text-white"
+                                  : "bg-gray-200 text-gray-700 hover:bg-yellow-200"
+                              }`}
+                            >
+                              ⏳
+                            </button>
+                          </div>
+                          <span className="text-gray-700 text-sm flex-1">
+                            {item}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Observaciones
+                      </label>
+                      <textarea
+                        value={observations}
+                        onChange={(e) => setObservations(e.target.value)}
+                        rows="4"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Escriba observaciones adicionales..."
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {activeTab === "checklist" && (
+                <div className="mt-8 flex gap-4 justify-center flex-wrap border-t pt-6">
+                  <button
+                    onClick={generatePDF}
+                    className="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-bold text-lg shadow-lg"
+                  >
+                    📥 Descargar PDF de esta sección
+                  </button>
+                </div>
+              )}
+
+              {activeTab === "client-info" && (
+                <div className="mt-6 flex gap-4 justify-center flex-wrap">
+                  <p className="text-sm text-gray-600 w-full text-center">
+                    💡 Los datos se guardan automáticamente
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-6 flex gap-4 justify-center flex-wrap">
+                <button
+                  onClick={() => {
+                    if (
+                      confirm("¿Estás seguro? Se borrarán todos los datos.")
+                    ) {
+                      localStorage.clear();
+                      setClientData({
+                        company: "",
+                        cuit: "",
+                        address: "",
+                        phone: "",
+                        email: "",
+                        sector: "",
+                        workers: "",
+                        visitDate: new Date().toISOString().split("T")[0],
+                        inspector: "",
+                      });
+                      setChecklistItems({});
+                      setObservations("");
+                      alert("Datos borrados correctamente");
+                    }
+                  }}
+                  className="px-6 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition font-medium"
+                >
+                  🗑️ Limpiar Todo
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<ChecklistApp />);
+    </script>
+  </body>
+</html>
